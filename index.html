@@ -884,3 +884,199 @@
     </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - ProPrep</title>
+    
+    <!-- Firebase SDKs (HTML Version) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #f4f7f6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 900px; margin: auto; padding: 20px; }
+        .header { background: #2c3e50; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; margin-bottom: 20px; }
+        .card { background: white; padding: 25px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 15px; }
+        label { font-weight: bold; font-size: 14px; color: #555; display: block; margin-bottom: 5px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 15px; }
+        button { background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
+        button:hover { background: #2980b9; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f1f1f1; }
+        #error-message { color: red; text-align: center; margin-top: 10px; font-weight: bold; display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- 1. LOGIN SCREEN -->
+    <div id="login-screen" class="container" style="max-width: 400px; margin-top: 100px;">
+        <div class="card">
+            <h2 style="text-align: center; margin-bottom: 20px; color: #2c3e50;">Admin Login</h2>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" placeholder="admin@proprep.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter Password">
+            </div>
+            <button onclick="loginAdmin()">Login</button>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <!-- 2. DASHBOARD SCREEN -->
+    <div id="dashboard-screen" class="container" style="display: none;">
+        <div class="header">
+            <h2 style="margin: 0;">ProPrep Admin</h2>
+            <button onclick="logoutAdmin()" style="background: #e74c3c; width: auto; padding: 8px 15px;">Logout</button>
+        </div>
+
+        <div class="card">
+            <h3>Add New Test</h3>
+            <div class="form-group">
+                <label>Test Name</label>
+                <input type="text" id="test-name" placeholder="E.g. RRB ALP Test 1">
+            </div>
+            <div class="form-group">
+                <label>Total Questions</label>
+                <input type="number" id="test-total" placeholder="E.g. 100">
+            </div>
+            <button style="background: #2ecc71;" onclick="addTest()">Save Test to App</button>
+        </div>
+
+        <div class="card">
+            <h3>Uploaded Tests</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Test Name</th>
+                        <th>Questions</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="test-list">
+                    <tr><td colspan="3" style="text-align: center;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // AAPKI DI HUI EXACT CONFIGURATION
+        const firebaseConfig = {
+            apiKey: "AIzaSyAUlrncl5JnCZYW5v5yiNOisbUc_qMs2BM",
+            authDomain: "proprep-railway.firebaseapp.com",
+            projectId: "proprep-railway",
+            storageBucket: "proprep-railway.firebasestorage.app",
+            messagingSenderId: "861369835280",
+            appId: "1:861369835280:web:2dbddca4d8f171f3038f95",
+            measurementId: "G-3Y426WK8WB"
+        };
+        
+        // Firebase Shuru Karein
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Screen badalne ka logic
+        auth.onAuthStateChanged(function(user) {
+            if (user) {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard-screen').style.display = 'block';
+                fetchTests();
+            } else {
+                document.getElementById('login-screen').style.display = 'block';
+                document.getElementById('dashboard-screen').style.display = 'none';
+            }
+        });
+
+        // Login Function
+        function loginAdmin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('error-message');
+
+            if (email === "" || password === "") {
+                errorMsg.style.display = 'block';
+                errorMsg.innerText = "Email aur Password dono daalein!";
+                return;
+            }
+
+            auth.signInWithEmailAndPassword(email, password).catch(function(error) {
+                errorMsg.style.display = 'block';
+                errorMsg.innerText = "Galat Details: " + error.message;
+            });
+        }
+
+        // Logout Function
+        function logoutAdmin() {
+            auth.signOut();
+        }
+
+        // Test Add Karne Ka Function
+        function addTest() {
+            const name = document.getElementById('test-name').value;
+            const total = document.getElementById('test-total').value;
+
+            if (name === "" || total === "") {
+                alert("Pura form bharein!");
+                return;
+            }
+
+            db.collection("tests").add({
+                title: name,
+                totalQuestions: parseInt(total),
+                completed: 0,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(function() {
+                alert("Test Add Ho Gaya!");
+                document.getElementById('test-name').value = '';
+                document.getElementById('test-total').value = '';
+            }).catch(function(error) {
+                alert("Error: " + error.message);
+            });
+        }
+
+        // Database Se Tests Laane Ka Function
+        function fetchTests() {
+            db.collection("tests").orderBy("createdAt", "desc").onSnapshot(function(snapshot) {
+                const list = document.getElementById('test-list');
+                list.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    list.innerHTML = '<tr><td colspan="3" style="text-align: center;">Koi Test Nahi Hai</td></tr>';
+                    return;
+                }
+
+                snapshot.forEach(function(doc) {
+                    const data = doc.data();
+                    list.innerHTML += `
+                        <tr>
+                            <td><b>${data.title}</b></td>
+                            <td>${data.totalQuestions}</td>
+                            <td><button style="background: #e74c3c; padding: 5px 10px; font-size: 12px; width: auto;" onclick="deleteTest('${doc.id}')">Delete</button></td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+        // Test Delete Function
+        function deleteTest(id) {
+            if(confirm("Pakka Delete Karna Hai?")) {
+                db.collection("tests").doc(id).delete();
+            }
+        }
+    </script>
+</body>
+</html>
