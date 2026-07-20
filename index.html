@@ -411,4 +411,240 @@
 </body>
 </html>
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control - Mock Tests</title>
+    <!-- Firebase SDKs (v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #f4f7f6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 1000px; margin: auto; padding: 20px; }
+        .header { background: #2c3e50; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header h2 { margin: 0; font-size: 20px; }
+        button { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { opacity: 0.9; }
+        .btn-danger { background: #e74c3c; }
+        .btn-success { background: #2ecc71; width: 100%; padding: 12px; font-size: 16px; margin-top: 10px; }
+        
+        .card { background: white; padding: 25px; border-radius: 10px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #3498db; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; font-weight: 600; }
+        tr:hover { background: #fdfdfd; }
+        
+        #login-section { max-width: 400px; margin: 100px auto; }
+        .badge { background: #e74c3c; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; border: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Admin Login -->
+    <div id="login-section" class="container">
+        <div class="card">
+            <h2 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">Admin Portal</h2>
+            <div class="form-group">
+                <label>Admin Email</label>
+                <input type="email" id="admin-email" placeholder="e.g. admin@proprep.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="admin-password" placeholder="Enter password">
+            </div>
+            <button class="btn-success" id="login-btn">Login to Dashboard</button>
+            <p id="error-msg" style="color: red; font-size: 13px; text-align: center; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="admin-dashboard" style="display: none;">
+        <div class="header">
+            <h2>ProPrep Admin Dashboard</h2>
+            <button class="btn-danger" id="logout-btn">Logout</button>
+        </div>
+
+        <div class="container">
+            <!-- Add Data Form -->
+            <div class="card">
+                <h3>➕ Create New Test</h3>
+                <div class="form-group">
+                    <label>Test Title / Name</label>
+                    <input type="text" id="test-title" placeholder="e.g., RRB ALP CBT-1 Mock Test">
+                </div>
+                <div class="form-group">
+                    <label>Total Number of Questions</label>
+                    <input type="number" id="test-total" placeholder="e.g., 75">
+                </div>
+                <button class="btn-success" id="publish-btn">Publish to Student App</button>
+            </div>
+
+            <!-- Database View -->
+            <div class="card">
+                <h3>📋 Manage Live Tests</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Test Title</th>
+                                <th>Total Questions</th>
+                                <th>Publish Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-test-list">
+                            <tr><td colspan="4" style="text-align:center; color:#888;">Fetching data from database...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AAPKI ORIGINAL FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyAUlrncl5JnCZYW5v5yiNOisbUc_qMs2BM",
+            authDomain: "proprep-railway.firebaseapp.com",
+            projectId: "proprep-railway",
+            storageBucket: "proprep-railway.firebasestorage.app",
+            messagingSenderId: "861369835280",
+            appId: "1:861369835280:web:2dbddca4d8f171f3038f95",
+            measurementId: "G-3Y426WK8WB"
+        };
+        
+        // Initialize Firebase safely
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // DOM Elements
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const publishBtn = document.getElementById('publish-btn');
+        const errorMsg = document.getElementById('error-msg');
+
+        // Check Auth State
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('admin-dashboard').style.display = 'block';
+                loadAdminTests();
+            } else {
+                document.getElementById('login-section').style.display = 'block';
+                document.getElementById('admin-dashboard').style.display = 'none';
+            }
+        });
+
+        // Login Click Event Listener (Button fix)
+        loginBtn.addEventListener('click', () => {
+            const email = document.getElementById('admin-email').value.trim();
+            const password = document.getElementById('admin-password').value.trim();
+            
+            errorMsg.innerText = ""; // Clear old errors
+
+            if(!email || !password) {
+                errorMsg.innerText = "Please fill in both email and password!";
+                return;
+            }
+
+            loginBtn.innerText = "Logging in...";
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => {
+                    loginBtn.innerText = "Login to Dashboard";
+                })
+                .catch(err => {
+                    loginBtn.innerText = "Login to Dashboard";
+                    errorMsg.innerText = "Error: " + err.message;
+                });
+        });
+
+        // Logout Event
+        logoutBtn.addEventListener('click', () => {
+            if(confirm("Are you sure you want to logout?")) {
+                auth.signOut();
+            }
+        });
+
+        // Publish Test Event
+        publishBtn.addEventListener('click', () => {
+            const title = document.getElementById('test-title').value.trim();
+            const total = document.getElementById('test-total').value.trim();
+            
+            if(!title || !total) {
+                alert("Please fill all fields before publishing!");
+                return;
+            }
+
+            db.collection("tests").add({
+                title: title,
+                totalQuestions: parseInt(total),
+                completed: 0,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            })
+            .then(() => {
+                alert("✅ Test Added Successfully!");
+                document.getElementById('test-title').value = '';
+                document.getElementById('test-total').value = '';
+            })
+            .catch(error => {
+                alert("❌ Database Error: " + error.message);
+            });
+        });
+
+        // Load Data in Admin Table
+        function loadAdminTests() {
+            db.collection("tests").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+                const tbody = document.getElementById('admin-test-list');
+                tbody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">No tests in database yet.</td></tr>`;
+                    return;
+                }
+
+                snapshot.forEach(doc => {
+                    const test = doc.data();
+                    let dateStr = "Just Now";
+                    if(test.createdAt) {
+                        dateStr = test.createdAt.toDate().toLocaleDateString();
+                    }
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${test.title}</strong></td>
+                            <td>${test.totalQuestions} Qs</td>
+                            <td>${dateStr}</td>
+                            <td><button class="badge" onclick="deleteTest('${doc.id}')">Delete</button></td>
+                        </tr>
+                    `;
+                });
+            }, error => {
+                console.error(error);
+            });
+        }
+
+        // Delete Test (Global function so HTML onclick can access it)
+        window.deleteTest = function(id) {
+            if(confirm("Warning: This will permanently delete the test. Continue?")) {
+                db.collection("tests").doc(id).delete()
+                    .catch(err => alert("Error: " + err.message));
+            }
+        }
+    </script>
+</body>
+</html>
 
