@@ -343,8 +343,351 @@
                     }]
                 },
                 options: { scales: { r: { min: 0, max: 100 } } }
-            });
+            <!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProPrep - Advanced Exam Portal</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { primary: '#2563eb', darkBg: '#0f172a', darkCard: '#1e293b' } } }
         }
     </script>
-</body>
-</html>
+    <style>
+        .view-section { display: none; }
+        .active-view { display: block; animation: fadeIn 0.4s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-darkBg dark:text-gray-100 min-h-screen font-sans transition-colors duration-300">
+
+    <!-- Navbar -->
+    <nav class="bg-white dark:bg-darkCard shadow-md p-4 sticky top-0 z-50">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="text-2xl font-bold text-primary flex items-center gap-2">
+                <i class="fas fa-graduation-cap"></i> ProPrep
+            </div>
+            <div class="flex items-center gap-4">
+                <button id="themeToggle" class="text-xl p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i class="fas fa-moon dark:hidden"></i>
+                    <i class="fas fa-sun hidden dark:block text-yellow-400"></i>
+                </button>
+                <div id="nav-user" class="hidden flex items-center gap-3">
+                    <span id="user-email" class="text-sm font-bold text-green-600 dark:text-green-400"></span>
+                    <button onclick="logoutUser()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-sm shadow">Logout</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-6">
+
+        <!-- 1. AUTHENTICATION VIEW -->
+        <div id="auth-view" class="view-section active-view max-w-md mx-auto bg-white dark:bg-darkCard p-8 rounded-xl shadow-lg mt-10 border dark:border-gray-700">
+            <h2 class="text-2xl font-bold text-center mb-6">Portal Login</h2>
+            <div class="space-y-4">
+                <input type="email" id="email" placeholder="Email Address" class="w-full p-3 rounded border dark:border-gray-600 dark:bg-gray-800 outline-none">
+                <input type="password" id="password" placeholder="Password" class="w-full p-3 rounded border dark:border-gray-600 dark:bg-gray-800 outline-none">
+                
+                <button onclick="loginUser()" class="w-full bg-primary hover:bg-blue-700 text-white p-3 rounded font-bold shadow">Login Securely</button>
+                <button onclick="registerUser()" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded font-bold shadow">Register New Account</button>
+            </div>
+        </div>
+
+        <!-- 2. STUDENT PANEL -->
+        <div id="student-view" class="view-section">
+            <h2 class="text-3xl font-bold mb-6 border-b pb-2 dark:border-gray-700"><i class="fas fa-user-graduate text-primary"></i> Student Dashboard</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Mock Test List -->
+                <div class="md:col-span-2 space-y-6">
+                    <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow border dark:border-gray-700">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-xl font-bold"><i class="fas fa-laptop-code text-red-500"></i> Live Mock Tests</h3>
+                            <span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold animate-pulse">Live Now</span>
+                        </div>
+                        <div id="liveTestList" class="space-y-3">
+                            <!-- Dynamic Tests will appear here -->
+                            <p class="text-gray-500 text-sm italic" id="noTestMsg">No tests published yet. Wait for Admin.</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Chart -->
+                <div class="space-y-6">
+                    <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow border dark:border-gray-700">
+                        <h3 class="text-lg font-bold mb-4">Subject Performance</h3>
+                        <canvas id="performanceChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. LIVE TEST INTERFACE (STUDENT TAKING EXAM) -->
+        <div id="active-test-view" class="view-section max-w-4xl mx-auto">
+            <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow-lg border dark:border-gray-700">
+                <div class="flex flex-wrap justify-between items-center mb-6 border-b dark:border-gray-600 pb-4 gap-4">
+                    <h2 class="text-2xl font-bold text-primary" id="activeTestTitle">Exam Name</h2>
+                    <div class="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-bold text-lg flex items-center gap-2">
+                        <i class="fas fa-stopwatch animate-pulse"></i> <span id="testTimerDisplay">00:00</span>
+                    </div>
+                </div>
+                
+                <!-- Dynamic Questions Container -->
+                <div id="testQuestionsContainer" class="space-y-8 mb-8 max-h-[60vh] overflow-y-auto pr-2">
+                    <!-- Questions will be injected here via JS -->
+                </div>
+
+                <!-- Test Controls -->
+                <div class="flex justify-end items-center mt-6 pt-4 border-t dark:border-gray-600">
+                    <button onclick="submitTest()" class="bg-red-600 text-white px-8 py-3 rounded font-bold hover:bg-red-700 transition shadow-lg"><i class="fas fa-check-circle"></i> Submit Final Test</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. ADMIN PANEL (ADVANCED MOCK TEST CREATOR) -->
+        <div id="admin-view" class="view-section">
+            <h2 class="text-3xl font-bold mb-6 border-b pb-2 dark:border-gray-700 text-red-500"><i class="fas fa-user-shield"></i> Master Admin Panel</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- CREATE TEST SECTION -->
+                <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow border dark:border-gray-700">
+                    <h3 class="text-xl font-bold mb-4 border-b pb-2 dark:border-gray-600"><i class="fas fa-plus-circle text-blue-500"></i> Step 1: Add Questions</h3>
+                    
+                    <div class="space-y-4 mb-6">
+                        <textarea id="qText" placeholder="Enter your question here..." class="w-full p-3 border rounded dark:bg-gray-800 dark:border-gray-600" rows="3"></textarea>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <input type="text" id="optA" placeholder="Option A" class="p-2 border rounded dark:bg-gray-800 dark:border-gray-600">
+                            <input type="text" id="optB" placeholder="Option B" class="p-2 border rounded dark:bg-gray-800 dark:border-gray-600">
+                            <input type="text" id="optC" placeholder="Option C" class="p-2 border rounded dark:bg-gray-800 dark:border-gray-600">
+                            <input type="text" id="optD" placeholder="Option D" class="p-2 border rounded dark:bg-gray-800 dark:border-gray-600">
+                        </div>
+                        
+                        <div class="flex items-center gap-4">
+                            <label class="font-bold">Correct Answer:</label>
+                            <select id="correctAns" class="p-2 border rounded dark:bg-gray-800 dark:border-gray-600 font-bold">
+                                <option value="A">Option A</option>
+                                <option value="B">Option B</option>
+                                <option value="C">Option C</option>
+                                <option value="D">Option D</option>
+                            </select>
+                        </div>
+                        
+                        <button onclick="addQuestionToDraft()" class="w-full bg-gray-800 hover:bg-black text-white dark:bg-gray-600 dark:hover:bg-gray-500 font-bold py-2 rounded shadow">
+                            <i class="fas fa-plus"></i> Save Question to List
+                        </button>
+                    </div>
+
+                    <!-- List of added questions -->
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded border border-blue-200 dark:border-blue-800">
+                        <h4 class="font-bold mb-2 text-blue-800 dark:text-blue-300">Questions Added: <span id="draftCount">0</span></h4>
+                        <ul id="draftList" class="text-sm space-y-2 text-gray-700 dark:text-gray-300 max-h-32 overflow-y-auto">
+                            <li class="italic text-gray-400">No questions added yet.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- PUBLISH SECTION -->
+                <div class="space-y-6">
+                    <div class="bg-white dark:bg-darkCard p-6 rounded-xl shadow border dark:border-gray-700">
+                        <h3 class="text-xl font-bold mb-4 border-b pb-2 dark:border-gray-600"><i class="fas fa-rocket text-green-500"></i> Step 2: Publish Test</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="font-bold text-sm block mb-1">Test Name</label>
+                                <input type="text" id="newTestName" placeholder="e.g. Science Mock Test 1" class="w-full p-3 border rounded dark:bg-gray-800 dark:border-gray-600">
+                            </div>
+                            <div>
+                                <label class="font-bold text-sm block mb-1">Timer (in Minutes)</label>
+                                <input type="number" id="newTestTimer" placeholder="e.g. 30" class="w-full p-3 border rounded dark:bg-gray-800 dark:border-gray-600">
+                            </div>
+                            <button onclick="publishFinalTest()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg shadow-lg text-lg transition">
+                                Publish Mock Test Live
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Firebase SDK Setup & Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyAUlrncl5JnCZYW5v5yiNOisbUc_qMs2BM",
+            authDomain: "proprep-railway.firebaseapp.com",
+            projectId: "proprep-railway",
+            storageBucket: "proprep-railway.firebasestorage.app",
+            messagingSenderId: "861369835280",
+            appId: "1:861369835280:web:2dbddca4d8f171f3038f95"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const ADMIN_EMAIL = "admin@proprep.com";
+
+        // Global Databases (Temporary for Session)
+        window.draftQuestions = []; // Stores questions while Admin is creating test
+        window.allPublishedTests = []; // Stores all live tests
+
+        let timerInterval;
+
+        // Dark Mode
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+        });
+
+        // View Controller
+        function showView(viewId) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active-view'));
+            document.getElementById(viewId).classList.add('active-view');
+            if(viewId === 'student-view') initChart(); 
+        }
+
+        // Firebase Auth
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('nav-user').classList.remove('hidden');
+                document.getElementById('user-email').innerText = user.email;
+                if(user.email === ADMIN_EMAIL) showView('admin-view');
+                else showView('student-view');
+            } else {
+                document.getElementById('nav-user').classList.add('hidden');
+                showView('auth-view');
+            }
+        });
+
+        window.loginUser = () => {
+            signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(err => alert(err.message));
+        };
+        window.registerUser = () => {
+            createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value).catch(err => alert(err.message));
+        };
+        window.logoutUser = () => {
+            clearInterval(timerInterval);
+            signOut(auth);
+        };
+
+        // ================= ADMIN: ADD QUESTION TO DRAFT =================
+        window.addQuestionToDraft = () => {
+            const q = document.getElementById('qText').value;
+            const a = document.getElementById('optA').value;
+            const b = document.getElementById('optB').value;
+            const c = document.getElementById('optC').value;
+            const d = document.getElementById('optD').value;
+            const correct = document.getElementById('correctAns').value;
+
+            if(!q || !a || !b || !c || !d) {
+                alert("Please fill all question fields and options!");
+                return;
+            }
+
+            const newQuestion = { question: q, options: {A: a, B: b, C: c, D: d}, answer: correct };
+            window.draftQuestions.push(newQuestion);
+
+            // Update UI Draft List
+            document.getElementById('draftCount').innerText = window.draftQuestions.length;
+            const listUI = document.getElementById('draftList');
+            if(window.draftQuestions.length === 1) listUI.innerHTML = ""; // clear empty message
+            listUI.innerHTML += `<li><i class="fas fa-check text-green-500"></i> ${q.substring(0, 30)}...</li>`;
+
+            // Clear inputs for next question
+            document.getElementById('qText').value = '';
+            document.getElementById('optA').value = '';
+            document.getElementById('optB').value = '';
+            document.getElementById('optC').value = '';
+            document.getElementById('optD').value = '';
+        };
+
+        // ================= ADMIN: PUBLISH FINAL TEST =================
+        window.publishFinalTest = () => {
+            const tName = document.getElementById('newTestName').value;
+            const tTimer = document.getElementById('newTestTimer').value;
+
+            if(!tName || !tTimer) { alert("Please enter Test Name and Timer!"); return; }
+            if(window.draftQuestions.length === 0) { alert("Please add at least 1 question first!"); return; }
+
+            // Save test to Global Database
+            const testId = Date.now();
+            const finalTest = {
+                id: testId,
+                name: tName,
+                timer: tTimer,
+                questions: [...window.draftQuestions] // clone array
+            };
+            window.allPublishedTests.push(finalTest);
+
+            // Add Test to Student View UI
+            document.getElementById('noTestMsg').style.display = 'none';
+            const testHTML = `
+                <div class="flex justify-between items-center border p-4 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-600 shadow-sm">
+                    <div>
+                        <h4 class="font-bold text-lg text-primary">${finalTest.name}</h4>
+                        <p class="text-sm text-gray-500">${finalTest.questions.length} Questions • ${finalTest.timer} Mins</p>
+                    </div>
+                    <button onclick="startStudentTest(${testId})" class="bg-green-500 text-white px-5 py-2 rounded shadow font-bold hover:bg-green-600">Start Test</button>
+                </div>
+            `;
+            document.getElementById('liveTestList').insertAdjacentHTML('beforeend', testHTML);
+
+            alert("Test Published Successfully! Students can now take this test.");
+            
+            // Reset Admin Form
+            window.draftQuestions = [];
+            document.getElementById('draftCount').innerText = "0";
+            document.getElementById('draftList').innerHTML = `<li class="italic text-gray-400">No questions added yet.</li>`;
+            document.getElementById('newTestName').value = '';
+            document.getElementById('newTestTimer').value = '';
+        };
+
+        // ================= STUDENT: START TEST =================
+        window.startStudentTest = (testId) => {
+            const testData = window.allPublishedTests.find(t => t.id === testId);
+            if(!testData) return;
+
+            document.getElementById('activeTestTitle').innerText = testData.name;
+            
+            // Inject Questions into UI
+            const container = document.getElementById('testQuestionsContainer');
+            container.innerHTML = ""; // clear old
+            
+            testData.questions.forEach((qObj, index) => {
+                const qHTML = `
+                    <div class="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-600">
+                        <div class="font-bold mb-3 text-lg">Q${index + 1}. ${qObj.question}</div>
+                        <div class="space-y-2 pl-2">
+                            <label class="block p-3 border rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer dark:border-gray-700 bg-white dark:bg-gray-700">
+                                <input type="radio" name="ans_${index}" value="A" class="mr-2"> ${qObj.options.A}
+                            </label>
+                            <label class="block p-3 border rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer dark:border-gray-700 bg-white dark:bg-gray-700">
+                                <input type="radio" name="ans_${index}" value="B" class="mr-2"> ${qObj.options.B}
+                            </label>
+                            <label class="block p-3 border rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer dark:border-gray-700 bg-white dark:bg-gray-700">
+                                <input type="radio" name="ans_${index}" value="C" class="mr-2"> ${qObj.options.C}
+                            </label>
+                            <label class="block p-3 border rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 cursor-pointer dark:border-gray-700 bg-white dark:bg-gray-700">
+                                <input type="radio" name="ans_${index}" value="D" class="mr-2"> ${qObj.options.D}
+                            </label>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += qHTML;
+            });
+
+            showView('active-test-view'); 
+            
+            // Start Timer
+            let timeRemaining = testData.timer * 60;
+            updateTimer
