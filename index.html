@@ -3,201 +3,326 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mock Test Platform</title>
+    <title>Mock Test - Student App</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #202020; color: #ffffff; padding-bottom: 60px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background-color: #202020; color: #ffffff; }
         
-        /* Header */
+        /* Auth Screen (Login/Signup) */
+        #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; }
+        .auth-box { background: #2a2a2a; padding: 30px; border-radius: 10px; width: 100%; max-width: 350px; text-align: center; }
+        .auth-box input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 5px; background: #333; color: white; }
+        .auth-box button { width: 100%; padding: 12px; background: #5c6bc0; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .auth-box p { font-size: 12px; margin-top: 15px; color: #aaa; cursor: pointer; }
+
+        /* Main App Theme (Aapka pasandida design) */
+        #main-app { display: none; padding-bottom: 60px; }
         .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #2a2a2a; position: sticky; top: 0; z-index: 100; }
         .header-left { display: flex; align-items: center; gap: 15px; }
         .header-title { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
-        .header-right { display: flex; align-items: center; gap: 15px; }
-        .avatar { width: 30px; height: 30px; border-radius: 50%; background-color: #00bcd4; }
-
-        /* Banner */
+        .avatar { width: 30px; height: 30px; border-radius: 50%; background-color: #00bcd4; cursor: pointer; display:flex; align-items:center; justify-content:center; font-size: 12px; }
+        
         .banner-container { padding: 15px; }
         .banner { width: 100%; height: 150px; background: linear-gradient(45deg, #4b0082, #800080); border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: bold; }
-
-        /* Section Titles */
+        
         .section-header { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
         .section-title { font-size: 16px; border-left: 4px solid #5c6bc0; padding-left: 8px; }
-        .view-all { color: #5c6bc0; font-size: 14px; text-decoration: none; }
-
-        /* Horizontal Scroll Cards (Test Series) */
-        .scroll-container { display: flex; overflow-x: auto; gap: 15px; padding: 0 15px; scroll-behavior: smooth; }
+        
+        .scroll-container { display: flex; overflow-x: auto; gap: 15px; padding: 0 15px; }
         .scroll-container::-webkit-scrollbar { display: none; }
-        .card { min-width: 200px; background-color: #2a2a2a; border-radius: 10px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between; }
-        .card-icon { width: 40px; height: 40px; border-radius: 50%; background-color: white; margin-bottom: 10px; }
-        .card-title { font-size: 14px; font-weight: 600; margin-bottom: 20px; line-height: 1.4; }
+        .card { min-width: 220px; background-color: #2a2a2a; border-radius: 10px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #333;}
+        .card-icon { width: 40px; height: 40px; border-radius: 50%; background-color: #444; margin-bottom: 10px; display:flex; align-items:center; justify-content:center; }
+        .card-title { font-size: 14px; font-weight: 600; margin-bottom: 15px; line-height: 1.4; color: #ddd;}
         .progress-bar { width: 100%; height: 4px; background-color: #444; border-radius: 2px; margin-bottom: 5px; }
-        .progress-fill { width: 10%; height: 100%; background-color: #888; border-radius: 2px; }
+        .progress-fill { height: 100%; background-color: #5c6bc0; border-radius: 2px; }
         .card-stats { font-size: 12px; color: #aaa; }
-
+        
         /* Action Buttons Row */
         .action-row { display: flex; justify-content: space-around; padding: 20px 15px; background-color: #2d2d2d; margin-top: 15px; }
         .action-item { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; color: #ccc; }
         .action-icon-wrapper { width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; position: relative; }
-        .badge { position: absolute; top: -5px; right: -5px; background: #e91e63; color: white; font-size: 9px; padding: 2px 5px; border-radius: 10px; }
         
-        /* Bottom Navigation */
         .bottom-nav { position: fixed; bottom: 0; width: 100%; background-color: #2a2a2a; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #333; }
         .nav-item { display: flex; flex-direction: column; align-items: center; color: #888; font-size: 10px; gap: 5px; }
         .nav-item.active { color: #5c6bc0; }
-        .nav-item i { font-size: 18px; }
     </style>
 </head>
 <body>
 
-    <!-- Header -->
-    <header class="header">
-        <div class="header-left">
-            <i class="fa-solid fa-bars"></i>
-            <div class="header-title">My Exams <span style="background: #333; padding: 2px 6px; border-radius: 10px; font-size: 12px;">2</span> <i class="fa-solid fa-chevron-down" style="font-size: 12px;"></i></div>
-        </div>
-        <div class="header-right">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <div class="avatar"></div>
-        </div>
-    </header>
-
-    <!-- Banner -->
-    <div class="banner-container">
-        <div class="banner">
-            <!-- Yeh image ya text admin se aayega -->
-            <h3>CURRENT AFFAIRS<br>HALF YEARLY REVISION</h3>
+    <!-- AUTHENTICATION SCREEN -->
+    <div id="auth-screen">
+        <div class="auth-box">
+            <h2>Student Login</h2>
+            <input type="email" id="email" placeholder="Email Address">
+            <input type="password" id="password" placeholder="Password">
+            <button onclick="login()">Login / Sign Up</button>
+            <p>(Naye user ka account apne aap ban jayega)</p>
         </div>
     </div>
 
-    <!-- Enrolled Test Series (Dynamically populated by JS) -->
-    <div class="section-header">
-        <div class="section-title">Enrolled Test Series</div>
-        <a href="#" class="view-all">View All</a>
-    </div>
-    <div class="scroll-container" id="test-series-container">
-        <!-- JS will inject cards here -->
-    </div>
-
-    <!-- Action Icons -->
-    <div class="action-row">
-        <div class="action-item">
-            <div class="action-icon-wrapper" style="border: 2px solid #9c27b0; color: #9c27b0;">
-                <span class="badge">NEW</span><i class="fa-solid fa-book-open"></i>
+    <!-- MAIN APP SCREEN -->
+    <div id="main-app">
+        <header class="header">
+            <div class="header-left">
+                <i class="fa-solid fa-bars"></i>
+                <div class="header-title">My Exams <span style="background: #333; padding: 2px 6px; border-radius: 10px; font-size: 12px;">2</span></div>
             </div>
-            Study Notes
-        </div>
-        <div class="action-item">
-            <div class="action-icon-wrapper" style="border: 2px solid #673ab7; color: #673ab7;">
-                <i class="fa-solid fa-clipboard-list"></i>
+            <div class="header-right">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <div class="avatar" onclick="logout()" title="Logout">Out</div>
             </div>
-            Live Test
-        </div>
-        <div class="action-item">
-            <div class="action-icon-wrapper" style="border: 2px solid #e91e63; color: #e91e63;">
-                <span class="badge" style="background:#4caf50;">FREE</span><i class="fa-solid fa-stopwatch"></i>
-            </div>
-            Live Quizzes
-        </div>
-    </div>
+        </header>
 
-    <!-- Bottom Nav -->
-    <div class="bottom-nav">
-        <div class="nav-item"><i class="fa-solid fa-house"></i>Home</div>
-        <div class="nav-item active"><i class="fa-solid fa-clipboard"></i>Tests</div>
-        <div class="nav-item"><i class="fa-solid fa-bolt"></i>Super</div>
-        <div class="nav-item"><i class="fa-solid fa-ticket"></i>Pass</div>
+        <div class="banner-container">
+            <div class="banner">
+                <h3>CURRENT AFFAIRS<br>LIVE TEST SERIES</h3>
+            </div>
+        </div>
+
+        <div class="section-header">
+            <div class="section-title">Enrolled Test Series</div>
+            <span style="color: #5c6bc0; font-size: 14px;">View All</span>
+        </div>
+        
+        <!-- Live Data yahan aayega Admin Panel se -->
+        <div class="scroll-container" id="test-series-container">
+            <p style="color:#aaa; font-size:12px; padding: 10px;">Loading tests from Firebase...</p>
+        </div>
+
+        <div class="action-row">
+            <div class="action-item"><div class="action-icon-wrapper" style="border: 2px solid #9c27b0; color: #9c27b0;"><i class="fa-solid fa-book-open"></i></div>Study Notes</div>
+            <div class="action-item"><div class="action-icon-wrapper" style="border: 2px solid #673ab7; color: #673ab7;"><i class="fa-solid fa-clipboard-list"></i></div>Live Test</div>
+            <div class="action-item"><div class="action-icon-wrapper" style="border: 2px solid #e91e63; color: #e91e63;"><i class="fa-solid fa-stopwatch"></i></div>Quizzes</div>
+        </div>
+
+        <div class="bottom-nav">
+            <div class="nav-item"><i class="fa-solid fa-house"></i>Home</div>
+            <div class="nav-item active"><i class="fa-solid fa-clipboard"></i>Tests</div>
+            <div class="nav-item"><i class="fa-solid fa-bolt"></i>Super</div>
+        </div>
     </div>
 
     <script>
-        // Yeh data aage chalkar aapke Admin Panel API se aayega (e.g., fetch('/api/tests'))
-        const testDataFromAdmin = [
-            { id: 1, title: "RRB ALP (CBT 1 + CBT 2 + CBAT) Mock Test...", completed: 2, total: 991 },
-            { id: 2, title: "RRB Group D Mock Test Series 2025-26", completed: 2, total: 2040 },
-            { id: 3, title: "SSC CGL Tier 1 Complete Practice", completed: 15, total: 500 }
-        ];
+        // YAHAN APNI FIREBASE CONFIGURATION PASTE KAREIN
+        const firebaseConfig = {
+            apiKey: "AIzaSy_YOUR_API_KEY",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:12345:web:abcd"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        // Dynamic rendering function
-        function renderTests() {
-            const container = document.getElementById('test-series-container');
-            container.innerHTML = ''; // Clear loading state
+        // Check Login State
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('auth-screen').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                loadTests(); // User logged in hai, toh tests load karo
+            } else {
+                document.getElementById('auth-screen').style.display = 'flex';
+                document.getElementById('main-app').style.display = 'none';
+            }
+        });
 
-            testDataFromAdmin.forEach(test => {
-                const progressPercentage = (test.completed / test.total) * 100;
-                
-                const cardHTML = `
-                    <div class="card">
-                        <div class="card-icon"><img src="https://via.placeholder.com/40" style="border-radius:50%"></div>
-                        <div class="card-title">${test.title}</div>
-                        <div>
-                            <div class="progress-bar"><div class="progress-fill" style="width: ${progressPercentage}%"></div></div>
-                            <div class="card-stats">${test.completed}/${test.total}</div>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += cardHTML;
-            });
+        // Login / Register Function
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(error => {
+                    if (error.code === 'auth/user-not-found') {
+                        // Agar naya user hai toh auto register kardo
+                        auth.createUserWithEmailAndPassword(email, password);
+                    } else {
+                        alert(error.message);
+                    }
+                });
         }
 
-        // Initialize UI
-        renderTests();
+        // Logout
+        function logout() { auth.signOut(); }
+
+        // Fetch Live Tests from Database
+        function loadTests() {
+            const container = document.getElementById('test-series-container');
+            
+            // onSnapshot se Realtime update hota hai. Admin wahan add karega, yahan turant dikhega bina refresh kiye.
+            db.collection("tests").onSnapshot((snapshot) => {
+                container.innerHTML = ''; 
+                if (snapshot.empty) {
+                    container.innerHTML = '<p style="color:#aaa;">No tests available yet.</p>';
+                    return;
+                }
+                snapshot.forEach(doc => {
+                    const test = doc.data();
+                    const percentage = (test.completed / test.totalQuestions) * 100 || 0;
+                    
+                    container.innerHTML += `
+                        <div class="card">
+                            <div class="card-icon"><i class="fa-solid fa-building-columns" style="color:#bbb;"></i></div>
+                            <div class="card-title">${test.title}</div>
+                            <div>
+                                <div class="progress-bar"><div class="progress-fill" style="width: ${percentage}%"></div></div>
+                                <div class="card-stats">${test.completed}/${test.totalQuestions} Questions</div>
+                                <button style="width:100%; margin-top:10px; background:#5c6bc0; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer;" onclick="alert('Starting Test...')">Start Test</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
     </script>
 </body>
 </html>
-// server.js (Backend Entry Point)
-const express = require('express');
-const app = express();
-app.use(express.json()); // JSON data receive karne ke liye
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard - Tests</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; }
+        .container { max-width: 900px; margin: auto; padding: 20px; }
+        .header { background: #2c3e50; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+        button { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+        .card { background: white; padding: 20px; border-radius: 8px; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #eee; }
+        .delete-btn { background: #e74c3c; font-size: 12px; }
+    </style>
+</head>
+<body>
 
-// Ek dummy database array (Reality mein yahan MongoDB Mongoose models honge)
-let testsDatabase = [
-    { id: 1, title: "RRB ALP (CBT 1 + CBT 2 + CBAT) Mock Test...", totalQuestions: 991 }
-];
+    <div id="login-section" class="container" style="max-width: 400px; margin-top: 100px;">
+        <div class="card">
+            <h2>Admin Login</h2>
+            <input type="email" id="admin-email" placeholder="Admin Email">
+            <input type="password" id="admin-password" placeholder="Password">
+            <button style="width: 100%; background: #2ecc71;" onclick="adminLogin()">Login Panel</button>
+        </div>
+    </div>
 
-// ----------------------------------------------------
-// USER ROUTES (User app inko fetch karegi UI dikhane ke liye)
-// ----------------------------------------------------
-app.get('/api/user/tests', (req, res) => {
-    // User jab login karega, uske enrolled tests database se nikal kar bhejenge
-    res.json(testsDatabase); 
-});
+    <div id="admin-dashboard" style="display: none;">
+        <div class="header">
+            <h2>Admin Control Panel</h2>
+            <button onclick="auth.signOut()">Logout</button>
+        </div>
 
-// ----------------------------------------------------
-// ADMIN ROUTES (Admin Panel dashboard yahan data bhejegha)
-// ----------------------------------------------------
+        <div class="container">
+            <div class="card">
+                <h3>Create New Test</h3>
+                <input type="text" id="test-title" placeholder="Test Name (e.g., RRB ALP CBT 1 Mock)">
+                <input type="number" id="test-total" placeholder="Total Questions (e.g., 100)">
+                <button onclick="addTest()" style="background: #2ecc71;">Publish Test</button>
+            </div>
 
-// 1. ADD: Admin naya test add karta hai
-app.post('/api/admin/tests', (req, res) => {
-    const newTest = {
-        id: testsDatabase.length + 1,
-        title: req.body.title,
-        totalQuestions: req.body.totalQuestions
-    };
-    testsDatabase.push(newTest);
-    res.status(201).json({ message: "New test added successfully by Admin!", test: newTest });
-});
+            <div class="card">
+                <h3>Live Tests in Database</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Test Title</th>
+                            <th>Total Questions</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-test-list">
+                        <!-- Data live here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 
-// 2. UPDATE: Admin purane test ko edit karta hai
-app.put('/api/admin/tests/:id', (req, res) => {
-    const testId = parseInt(req.params.id);
-    const testIndex = testsDatabase.findIndex(t => t.id === testId);
-    
-    if(testIndex !== -1) {
-        testsDatabase[testIndex] = { ...testsDatabase[testIndex], ...req.body };
-        res.json({ message: "Test updated successfully!", test: testsDatabase[testIndex] });
-    } else {
-        res.status(404).json({ message: "Test not found!" });
-    }
-});
+    <script>
+        // YAHAN APNI SAME FIREBASE CONFIGURATION DALEIN JO STUDENT WALE MEIN DALI HAI
+        const firebaseConfig = {
+            apiKey: "AIzaSy_YOUR_API_KEY",
+            authDomain: "your-project.firebaseapp.com",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:12345:web:abcd"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-// 3. DELETE: Admin test ko delete karta hai
-app.delete('/api/admin/tests/:id', (req, res) => {
-    const testId = parseInt(req.params.id);
-    testsDatabase = testsDatabase.filter(t => t.id !== testId);
-    res.json({ message: "Test deleted successfully!" });
-});
+        // Auth Listener
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('admin-dashboard').style.display = 'block';
+                loadAdminTests();
+            } else {
+                document.getElementById('login-section').style.display = 'block';
+                document.getElementById('admin-dashboard').style.display = 'none';
+            }
+        });
 
-// Start Server
-app.listen(3000, () => {
-    console.log("Server is running on port 3000");
-});
+        function adminLogin() {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            auth.signInWithEmailAndPassword(email, password).catch(err => alert(err.message));
+        }
+
+        // Add Test to Firestore
+        function addTest() {
+            const title = document.getElementById('test-title').value;
+            const total = document.getElementById('test-total').value;
+            
+            if(!title || !total) return alert("Please fill all details!");
+
+            db.collection("tests").add({
+                title: title,
+                totalQuestions: parseInt(total),
+                completed: 0, // Default initial value
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            }).then(() => {
+                alert("Test Added to User Panel!");
+                document.getElementById('test-title').value = '';
+                document.getElementById('test-total').value = '';
+            });
+        }
+
+        // Load Tests in Admin Table
+        function loadAdminTests() {
+            db.collection("tests").orderBy("createdAt", "desc").onSnapshot(snapshot => {
+                const tbody = document.getElementById('admin-test-list');
+                tbody.innerHTML = '';
+                snapshot.forEach(doc => {
+                    const test = doc.data();
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${test.title}</td>
+                            <td>${test.totalQuestions}</td>
+                            <td><button class="delete-btn" onclick="deleteTest('${doc.id}')">Delete</button></td>
+                        </tr>
+                    `;
+                });
+            });
+        }
+
+        // Delete Test
+        function deleteTest(id) {
+            if(confirm("Are you sure you want to delete this test?")) {
+                db.collection("tests").doc(id).delete();
+            }
+        }
+    </script>
+</body>
+</html>
