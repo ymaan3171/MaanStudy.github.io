@@ -3,245 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Tests Management</title>
-    <!-- Firebase SDKs (v8 for HTML) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: #121212; color: #fff; margin: 0; padding: 0; }
-        .container { max-width: 900px; margin: auto; padding: 20px; }
-        .header { background: #1e1e1e; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
-        button { background: #5c6bc0; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        button:hover { opacity: 0.9; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 8px; margin-top: 20px; border: 1px solid #333; }
-        input, select { width: 100%; padding: 12px; margin: 10px 0; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 5px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #333; font-size: 14px; }
-        th { background: #252525; color: #ccc; }
-        .delete-btn { background: #e74c3c; font-size: 12px; padding: 6px 10px; }
-        #login-section { max-width: 400px; margin: 100px auto; }
-    </style>
-</head>
-<body>
-
-    <!-- Admin Login Screen -->
-    <div id="login-section" class="container">
-        <div class="card" style="text-align: center;">
-            <h2>Admin Login Panel</h2>
-            <p style="color: #aaa; font-size: 13px; margin-bottom: 15px;">Apni Firebase Auth Email & Password se login karein</p>
-            <input type="email" id="admin-email" placeholder="Admin Email">
-            <input type="password" id="admin-password" placeholder="Password">
-            <button style="width: 100%; background: #5c6bc0; margin-top: 10px;" onclick="adminLogin()">Login to Dashboard</button>
-        </div>
-    </div>
-
-    <!-- Admin Dashboard Main Screen -->
-    <div id="admin-dashboard" style="display: none;">
-        <div class="header">
-            <h2>⚡ Admin Control Panel</h2>
-            <button onclick="logoutAdmin()" style="background: #e74c3c;">Logout</button>
-        </div>
-
-        <div class="container">
-            <!-- Add New Test Form -->
-            <div class="card">
-                <h3>➕ Add New Mock Test / Series</h3>
-                <input type="text" id="test-title" placeholder="Test Title (e.g., RRB ALP CBT 1 Mock Test)">
-                <input type="number" id="test-total" placeholder="Total Questions (e.g., 991)">
-                <input type="number" id="test-completed" placeholder="Completed/Attempted Questions (Default: 0)" value="0">
-                <button onclick="addTest()" style="background: #27ae60; width: 100%;">Publish Test to User App</button>
-            </div>
-
-            <!-- Live Database Table -->
-            <div class="card">
-                <h3>📋 All Tests in Database (Live)</h3>
-                <div style="overflow-x: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Test Title</th>
-                                <th>Total Qs</th>
-                                <th>Completed</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="admin-test-list">
-                            <tr><td colspan="4" style="text-align:center; color:#888;">Loading tests...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Aapki Original Firebase Config
-        const firebaseConfig = {
-            apiKey: "AIzaSyAUlrncl5JnCZYW5v5yiNOisbUc_qMs2BM",
-            authDomain: "proprep-railway.firebaseapp.com",
-            projectId: "proprep-railway",
-            storageBucket: "proprep-railway.firebasestorage.app",
-            messagingSenderId: "861369835280",
-            appId: "1:861369835280:web:2dbddca4d8f171f3038f95",
-            measurementId: "G-3Y426WK8WB"
-        };
-        
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
-
-        // Auth State Check
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('admin-dashboard').style.display = 'block';
-                loadAdminTests();
-            } else {
-                document.getElementById('login-section').style.display = 'block';
-                document.getElementById('admin-dashboard').style.display = 'none';
-            }
-        });
-
-        // Admin Login Function
-        function adminLogin() {
-            const email = document.getElementById('admin-email').value;
-            const password = document.getElementById('admin-password').value;
-            if(!email || !password) {
-                alert("Please enter email and password!");
-                return;
-            }
-            auth.signInWithEmailAndPassword(email, password)
-                .catch(err => alert("Login Failed: " + err.message));
-        }
-
-        // Logout
-        function logoutAdmin() {
-            auth.signOut();
-        }
-
-        // Add Test to Firestore Database
-        function addTest() {
-            const title = document.getElementById('test-title').value;
-            const total = document.getElementById('test-total').value;
-            const completed = document.getElementById('test-completed').value;
-            
-            if(!title || !total) {
-                alert("Please fill Test Title and Total Questions!");
-                return;
-            }
-
-            db.collection("tests").add({
-                title: title,
-                totalQuestions: parseInt(total),
-                completed: parseInt(completed) || 0,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            })
-            .then(() => {
-                alert("✅ Test successfully added and published to Student App!");
-                document.getElementById('test-title').value = '';
-                document.getElementById('test-total').value = '';
-                document.getElementById('test-completed').value = '0';
-            })
-            .catch(error => {
-                alert("❌ Error adding test: " + error.message);
-                console.error("Firestore Error: ", error);
-            });
-        }
-
-        // Load Tests in Admin Table Realtime
-        function loadAdminTests() {
-            db.collection("tests").orderBy("createdAt", "desc").onSnapshot(snapshot => {
-                const tbody = document.getElementById('admin-test-list');
-                tbody.innerHTML = '';
-                
-                if (snapshot.empty) {
-                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">No tests found. Add your first test above!</td></tr>`;
-                    return;
-                }
-
-                snapshot.forEach(doc => {
-                    const test = doc.data();
-                    tbody.innerHTML += `
-                        <tr>
-                            <td><b>${test.title}</b></td>
-                            <td>${test.totalQuestions}</td>
-                            <td>${test.completed || 0}</td>
-                            <td><button class="delete-btn" onclick="deleteTest('${doc.id}')">Delete</button></td>
-                        </tr>
-                    `;
-                });
-            }, error => {
-                console.error("Error loading tests: ", error);
-                document.getElementById('admin-test-list').innerHTML = `<tr><td colspan="4" style="text-align:center; color:red;">Permission Denied! Check Firestore Rules.</td></tr>`;
-            });
-        }
-
-        // Delete Test from Database
-        function deleteTest(id) {
-            if(confirm("Are you sure you want to delete this test?")) {
-                db.collection("tests").doc(id).delete()
-                    .then(() => alert("Test deleted successfully!"))
-                    .catch(err => alert("Error deleting: " + err.message));
-            }
-        }
-    </script>
-</body>
-</html>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mock Test - Student App</title>
+    <title>Mock Test - Student Portal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Firebase SDKs (v8 for HTML) -->
+    <!-- Firebase SDKs (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background-color: #202020; color: #ffffff; }
+        body { background-color: #121212; color: #ffffff; }
         
-        /* Auth Screen */
-        #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; }
-        .auth-box { background: #2a2a2a; padding: 30px; border-radius: 10px; width: 100%; max-width: 350px; text-align: center; }
-        .auth-box input { width: 100%; padding: 12px; margin: 10px 0; border: none; border-radius: 5px; background: #333; color: white; }
-        .auth-box button { width: 100%; padding: 12px; background: #5c6bc0; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .auth-box p { font-size: 12px; margin-top: 15px; color: #aaa; cursor: pointer; }
+        /* Auth Screen (Login) */
+        #auth-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; background: #000; }
+        .auth-box { background: #1e1e1e; padding: 30px; border-radius: 12px; width: 100%; max-width: 380px; text-align: center; border: 1px solid #333; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .auth-box h2 { margin-bottom: 20px; color: #5c6bc0; }
+        .auth-box input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #333; border-radius: 8px; background: #2a2a2a; color: white; font-size: 14px; }
+        .auth-box button { width: 100%; padding: 14px; background: #5c6bc0; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 15px; font-size: 15px; transition: 0.3s; }
+        .auth-box button:hover { background: #4a569d; }
 
         /* Main App Theme */
-        #main-app { display: none; padding-bottom: 60px; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #2a2a2a; position: sticky; top: 0; z-index: 100; }
-        .header-left { display: flex; align-items: center; gap: 15px; }
-        .header-title { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
-        .avatar { width: 30px; height: 30px; border-radius: 50%; background-color: #00bcd4; cursor: pointer; display:flex; align-items:center; justify-content:center; font-size: 12px; }
+        #main-app { display: none; padding-bottom: 70px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background-color: #1e1e1e; position: sticky; top: 0; z-index: 100; border-bottom: 1px solid #2a2a2a; }
+        .header-title { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .avatar { width: 32px; height: 32px; border-radius: 50%; background-color: #e91e63; cursor: pointer; display:flex; align-items:center; justify-content:center; font-size: 12px; font-weight: bold; }
         
         .banner-container { padding: 15px; }
-        .banner { width: 100%; height: 150px; background: linear-gradient(45deg, #4b0082, #800080); border-radius: 10px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: bold; }
+        .banner { width: 100%; height: 160px; background: linear-gradient(135deg, #4b0082, #9c27b0); border-radius: 12px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         
-        .section-header { display: flex; justify-content: space-between; padding: 15px; align-items: center; }
-        .section-title { font-size: 16px; border-left: 4px solid #5c6bc0; padding-left: 8px; }
+        .section-header { display: flex; justify-content: space-between; padding: 20px 15px 10px; align-items: center; }
+        .section-title { font-size: 16px; border-left: 4px solid #5c6bc0; padding-left: 10px; font-weight: bold; }
         
-        .scroll-container { display: flex; overflow-x: auto; gap: 15px; padding: 0 15px; }
+        /* Horizontal Scroll Cards */
+        .scroll-container { display: flex; overflow-x: auto; gap: 15px; padding: 10px 15px; scroll-behavior: smooth; }
         .scroll-container::-webkit-scrollbar { display: none; }
-        .card { min-width: 220px; background-color: #2a2a2a; border-radius: 10px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #333;}
-        .card-icon { width: 40px; height: 40px; border-radius: 50%; background-color: #444; margin-bottom: 10px; display:flex; align-items:center; justify-content:center; }
-        .card-title { font-size: 14px; font-weight: 600; margin-bottom: 15px; line-height: 1.4; color: #ddd;}
-        .progress-bar { width: 100%; height: 4px; background-color: #444; border-radius: 2px; margin-bottom: 5px; }
-        .progress-fill { height: 100%; background-color: #5c6bc0; border-radius: 2px; }
-        .card-stats { font-size: 12px; color: #aaa; }
+        .card { min-width: 240px; background-color: #1e1e1e; border-radius: 12px; padding: 15px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #2a2a2a; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .card-icon { width: 45px; height: 45px; border-radius: 50%; background-color: #2a2a2a; margin-bottom: 12px; display:flex; align-items:center; justify-content:center; color: #fff; font-size: 18px; }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 15px; line-height: 1.4; color: #eee; }
+        .progress-bar { width: 100%; height: 5px; background-color: #333; border-radius: 3px; margin-bottom: 8px; overflow: hidden; }
+        .progress-fill { height: 100%; background-color: #5c6bc0; border-radius: 3px; transition: width 0.3s; }
+        .card-stats { font-size: 12px; color: #999; margin-bottom: 15px; }
+        .start-btn { width: 100%; padding: 10px; background: rgba(92, 107, 192, 0.1); color: #5c6bc0; border: 1px solid #5c6bc0; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .start-btn:hover { background: #5c6bc0; color: white; }
         
-        .action-row { display: flex; justify-content: space-around; padding: 20px 15px; background-color: #2d2d2d; margin-top: 15px; }
-        .action-item { display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 12px; color: #ccc; }
-        .action-icon-wrapper { width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; position: relative; }
+        /* Action Buttons */
+        .action-row { display: flex; justify-content: space-around; padding: 25px 15px; background-color: #1a1a1a; margin-top: 15px; }
+        .action-item { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 12px; color: #ccc; font-weight: 500; }
+        .action-icon-wrapper { width: 55px; height: 55px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 22px; background: #222; }
         
-        .bottom-nav { position: fixed; bottom: 0; width: 100%; background-color: #2a2a2a; display: flex; justify-content: space-around; padding: 10px 0; border-top: 1px solid #333; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: #888; font-size: 10px; gap: 5px; }
+        /* Bottom Navigation */
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background-color: #1e1e1e; display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #2a2a2a; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #777; font-size: 11px; gap: 6px; cursor: pointer; }
         .nav-item.active { color: #5c6bc0; }
+        .nav-item i { font-size: 20px; }
     </style>
 </head>
 <body>
@@ -249,11 +63,11 @@
     <!-- AUTHENTICATION SCREEN -->
     <div id="auth-screen">
         <div class="auth-box">
-            <h2>Student Login</h2>
-            <input type="email" id="email" placeholder="Email Address">
-            <input type="password" id="password" placeholder="Password">
-            <button onclick="login()">Login / Sign Up</button>
-            <p>(Naye user ka account apne aap ban jayega)</p>
+            <h2>Welcome Student</h2>
+            <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Sign in to access your mock tests</p>
+            <input type="email" id="email" placeholder="Enter Email Address" required>
+            <input type="password" id="password" placeholder="Enter Password" required>
+            <button onclick="login()">Login / Auto-Register</button>
         </div>
     </div>
 
@@ -261,33 +75,33 @@
     <div id="main-app">
         <header class="header">
             <div class="header-left">
-                <i class="fa-solid fa-bars"></i>
-                <div class="header-title">My Exams <span style="background: #333; padding: 2px 6px; border-radius: 10px; font-size: 12px;">2</span></div>
+                <i class="fa-solid fa-bars" style="font-size: 20px; color: #ccc;"></i>
+                <div class="header-title" style="margin-left: 10px;">My Exams <span style="background: #333; padding: 2px 8px; border-radius: 12px; font-size: 12px; color: #5c6bc0;">Pro</span></div>
             </div>
             <div class="header-right">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <div class="avatar" onclick="logout()" title="Logout">Out</div>
+                <div class="avatar" onclick="logout()" title="Click to Logout">Out</div>
             </div>
         </header>
 
         <div class="banner-container">
             <div class="banner">
-                <h3>CURRENT AFFAIRS<br>LIVE TEST SERIES</h3>
+                <h3>PREMIUM MOCK TESTS<br><span style="font-size: 14px; color: #ddd; font-weight: normal;">Boost Your Preparation</span></h3>
             </div>
         </div>
 
         <div class="section-header">
-            <div class="section-title">Enrolled Test Series</div>
-            <span style="color: #5c6bc0; font-size: 14px;">View All</span>
+            <div class="section-title">Latest Test Series</div>
+            <span style="color: #5c6bc0; font-size: 13px; font-weight: 500; cursor: pointer;">View All</span>
         </div>
         
+        <!-- Live Data Container -->
         <div class="scroll-container" id="test-series-container">
-            <p style="color:#aaa; font-size:12px; padding: 10px;">Loading tests from Firebase...</p>
+            <div style="padding: 20px; color: #888; font-size: 14px;"><i class="fa-solid fa-spinner fa-spin"></i> Loading live tests...</div>
         </div>
 
         <div class="action-row">
             <div class="action-item"><div class="action-icon-wrapper" style="border: 2px solid #9c27b0; color: #9c27b0;"><i class="fa-solid fa-book-open"></i></div>Study Notes</div>
-            <div class="action-item"><div class="action-icon-wrapper" style="border: 2px solid #673ab7; color: #673ab7;"><i class="fa-solid fa-clipboard-list"></i></div>Live Test</div>
+            <div class="action-item"><div class="action-icon-wrapper" style="border: 2px solid #5c6bc0; color: #5c6bc0;"><i class="fa-solid fa-clipboard-list"></i></div>Live Test</div>
             <div class="action-item"><div class="action-icon-wrapper" style="border: 2px solid #e91e63; color: #e91e63;"><i class="fa-solid fa-stopwatch"></i></div>Quizzes</div>
         </div>
 
@@ -295,11 +109,12 @@
             <div class="nav-item"><i class="fa-solid fa-house"></i>Home</div>
             <div class="nav-item active"><i class="fa-solid fa-clipboard"></i>Tests</div>
             <div class="nav-item"><i class="fa-solid fa-bolt"></i>Super</div>
+            <div class="nav-item"><i class="fa-solid fa-user"></i>Profile</div>
         </div>
     </div>
 
     <script>
-        // AAPKI ORIGINAL FIREBASE KEYS
+        // AAPKI ORIGINAL FIREBASE CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyAUlrncl5JnCZYW5v5yiNOisbUc_qMs2BM",
             authDomain: "proprep-railway.firebaseapp.com",
@@ -330,10 +145,14 @@
         function login() {
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            if(!email || !password) return alert("Please enter email and password");
+
             auth.signInWithEmailAndPassword(email, password)
                 .catch(error => {
                     if (error.code === 'auth/user-not-found') {
-                        auth.createUserWithEmailAndPassword(email, password);
+                        auth.createUserWithEmailAndPassword(email, password)
+                            .then(() => alert("New Account Created Successfully!"))
+                            .catch(err => alert(err.message));
                     } else {
                         alert(error.message);
                     }
@@ -341,106 +160,150 @@
         }
 
         // Logout
-        function logout() { auth.signOut(); }
+        function logout() { 
+            if(confirm("Are you sure you want to logout?")) {
+                auth.signOut(); 
+            }
+        }
 
         // Fetch Live Tests from Database
         function loadTests() {
             const container = document.getElementById('test-series-container');
             
-            db.collection("tests").onSnapshot((snapshot) => {
+            db.collection("tests").orderBy("createdAt", "desc").onSnapshot((snapshot) => {
                 container.innerHTML = ''; 
                 if (snapshot.empty) {
-                    container.innerHTML = '<p style="color:#aaa;">No tests available yet.</p>';
+                    container.innerHTML = '<div style="padding: 20px; color: #888;">No tests available right now.</div>';
                     return;
                 }
+                
                 snapshot.forEach(doc => {
                     const test = doc.data();
-                    const percentage = (test.completed / test.totalQuestions) * 100 || 0;
+                    const completed = test.completed || 0;
+                    const total = test.totalQuestions || 1;
+                    const percentage = (completed / total) * 100;
                     
                     container.innerHTML += `
                         <div class="card">
-                            <div class="card-icon"><i class="fa-solid fa-building-columns" style="color:#bbb;"></i></div>
+                            <div class="card-icon"><i class="fa-solid fa-file-signature"></i></div>
                             <div class="card-title">${test.title}</div>
                             <div>
                                 <div class="progress-bar"><div class="progress-fill" style="width: ${percentage}%"></div></div>
-                                <div class="card-stats">${test.completed}/${test.totalQuestions} Questions</div>
-                                <button style="width:100%; margin-top:10px; background:#5c6bc0; color:white; border:none; padding:5px; border-radius:5px; cursor:pointer;" onclick="alert('Starting Test...')">Start Test</button>
+                                <div class="card-stats">${completed} / ${total} Questions</div>
+                                <button class="start-btn" onclick="alert('Module loading... (Integration ready)')">Attempt Test</button>
                             </div>
                         </div>
                     `;
                 });
+            }, (error) => {
+                console.error("Error fetching tests:", error);
+                container.innerHTML = '<div style="padding: 20px; color: #e74c3c;">Failed to load data. Please check database connection.</div>';
             });
         }
     </script>
 </body>
-    </html>
-    <!DOCTYPE html>
+</html> <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin Dashboard - Tests</title>
-    <!-- Firebase SDKs (v8 for HTML) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Control - Mock Tests</title>
+    <!-- Firebase SDKs (v8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; background: #f4f7f6; margin: 0; }
-        .container { max-width: 900px; margin: auto; padding: 20px; }
-        .header { background: #2c3e50; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-        button { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
-        .card { background: white; padding: 20px; border-radius: 8px; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #eee; }
-        .delete-btn { background: #e74c3c; font-size: 12px; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #f4f7f6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 1000px; margin: auto; padding: 20px; }
+        .header { background: #2c3e50; color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header h2 { margin: 0; font-size: 20px; }
+        button { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { opacity: 0.9; }
+        .btn-danger { background: #e74c3c; }
+        .btn-success { background: #2ecc71; width: 100%; padding: 12px; font-size: 16px; margin-top: 10px; }
+        
+        .card { background: white; padding: 25px; border-radius: 10px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .card h3 { margin-top: 0; color: #2c3e50; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #3498db; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; color: #555; font-weight: 600; }
+        tr:hover { background: #fdfdfd; }
+        
+        #login-section { max-width: 400px; margin: 100px auto; }
+        .badge { background: #e74c3c; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; border: none; }
     </style>
 </head>
 <body>
 
-    <div id="login-section" class="container" style="max-width: 400px; margin-top: 100px;">
+    <!-- Admin Login -->
+    <div id="login-section" class="container">
         <div class="card">
-            <h2>Admin Login</h2>
-            <input type="email" id="admin-email" placeholder="Admin Email">
-            <input type="password" id="admin-password" placeholder="Password">
-            <button style="width: 100%; background: #2ecc71;" onclick="adminLogin()">Login Panel</button>
+            <h2 style="text-align: center; color: #2c3e50; margin-bottom: 20px;">Admin Portal</h2>
+            <div class="form-group">
+                <label>Admin Email</label>
+                <input type="email" id="admin-email" placeholder="e.g. admin@proprep.com">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="admin-password" placeholder="Enter password">
+            </div>
+            <button class="btn-success" onclick="adminLogin()">Login to Dashboard</button>
         </div>
     </div>
 
+    <!-- Admin Dashboard -->
     <div id="admin-dashboard" style="display: none;">
         <div class="header">
-            <h2>Admin Control Panel</h2>
-            <button onclick="auth.signOut()">Logout</button>
+            <h2>ProPrep Admin Dashboard</h2>
+            <button class="btn-danger" onclick="auth.signOut()">Logout</button>
         </div>
 
         <div class="container">
+            <!-- Add Data Form -->
             <div class="card">
-                <h3>Create New Test</h3>
-                <input type="text" id="test-title" placeholder="Test Name (e.g., RRB ALP CBT 1 Mock)">
-                <input type="number" id="test-total" placeholder="Total Questions (e.g., 75)">
-                <button onclick="addTest()" style="background: #2ecc71;">Publish Test</button>
+                <h3>➕ Create New Test</h3>
+                <div class="form-group">
+                    <label>Test Title / Name</label>
+                    <input type="text" id="test-title" placeholder="e.g., RRB ALP CBT-1 Mock Test">
+                </div>
+                <div class="form-group">
+                    <label>Total Number of Questions</label>
+                    <input type="number" id="test-total" placeholder="e.g., 75">
+                </div>
+                <button class="btn-success" onclick="addTest()">Publish to Student App</button>
             </div>
 
+            <!-- Database View -->
             <div class="card">
-                <h3>Live Tests in Database</h3>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Test Title</th>
-                            <th>Total Questions</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-test-list">
-                        <!-- Data live here -->
-                    </tbody>
-                </table>
+                <h3>📋 Manage Live Tests</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Test Title</th>
+                                <th>Total Questions</th>
+                                <th>Publish Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-test-list">
+                            <tr><td colspan="4" style="text-align:center; color:#888;">Fetching data from database...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // AAPKI ORIGINAL FIREBASE KEYS
+        // AAPKI ORIGINAL FIREBASE CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyAUlrncl5JnCZYW5v5yiNOisbUc_qMs2BM",
             authDomain: "proprep-railway.firebaseapp.com",
@@ -455,7 +318,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // Auth Listener
+        // Check Auth
         auth.onAuthStateChanged(user => {
             if (user) {
                 document.getElementById('login-section').style.display = 'none';
@@ -467,55 +330,85 @@
             }
         });
 
+        // Admin Login
         function adminLogin() {
             const email = document.getElementById('admin-email').value;
             const password = document.getElementById('admin-password').value;
-            auth.signInWithEmailAndPassword(email, password).catch(err => alert(err.message));
+            if(!email || !password) return alert("Please enter credentials!");
+            
+            auth.signInWithEmailAndPassword(email, password)
+                .catch(err => alert("Login Failed: " + err.message));
         }
 
-        // Add Test to Firestore
+        // Add Test Logic
         function addTest() {
             const title = document.getElementById('test-title').value;
             const total = document.getElementById('test-total').value;
             
-            if(!title || !total) return alert("Please fill all details!");
+            if(!title || !total) {
+                return alert("Please fill all fields before publishing!");
+            }
 
             db.collection("tests").add({
                 title: title,
                 totalQuestions: parseInt(total),
-                completed: 0, 
+                completed: 0,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            }).then(() => {
-                alert("Test Added to User Panel!");
+            })
+            .then(() => {
+                alert("✅ Test Added Successfully!");
                 document.getElementById('test-title').value = '';
                 document.getElementById('test-total').value = '';
+            })
+            .catch(error => {
+                alert("❌ Database Error: " + error.message);
+                console.error("Error adding document: ", error);
             });
         }
 
-        // Load Tests in Admin Table
+        // Load Data in Admin Table
         function loadAdminTests() {
             db.collection("tests").orderBy("createdAt", "desc").onSnapshot(snapshot => {
                 const tbody = document.getElementById('admin-test-list');
                 tbody.innerHTML = '';
+                
+                if (snapshot.empty) {
+                    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">No tests in database yet.</td></tr>`;
+                    return;
+                }
+
                 snapshot.forEach(doc => {
                     const test = doc.data();
+                    let dateStr = "Just Now";
+                    if(test.createdAt) {
+                        dateStr = test.createdAt.toDate().toLocaleDateString();
+                    }
+
                     tbody.innerHTML += `
                         <tr>
-                            <td>${test.title}</td>
-                            <td>${test.totalQuestions}</td>
-                            <td><button class="delete-btn" onclick="deleteTest('${doc.id}')">Delete</button></td>
+                            <td><strong>${test.title}</strong></td>
+                            <td>${test.totalQuestions} Qs</td>
+                            <td>${dateStr}</td>
+                            <td><button class="badge" onclick="deleteTest('${doc.id}')"><i class="fa-solid fa-trash"></i> Delete</button></td>
                         </tr>
                     `;
                 });
+            }, error => {
+                alert("Permission Error! Please update Firestore Rules.");
+                console.error(error);
             });
         }
 
         // Delete Test
         function deleteTest(id) {
-            if(confirm("Are you sure you want to delete this test?")) {
-                db.collection("tests").doc(id).delete();
+            if(confirm("Warning: This will permanently delete the test for all students. Continue?")) {
+                db.collection("tests").doc(id).delete()
+                    .then(() => alert("Test deleted."))
+                    .catch(err => alert("Error: " + err.message));
             }
         }
     </script>
 </body>
 </html>
+
+
